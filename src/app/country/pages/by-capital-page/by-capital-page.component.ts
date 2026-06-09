@@ -1,10 +1,10 @@
-import { Component, inject, resource, signal } from '@angular/core';
-import { SearchInputComponent } from '../../components/search-input/search-input.component';
+import { Component, inject, linkedSignal, signal } from '@angular/core';
+import { rxResource } from '@angular/core/rxjs-interop';
+import { firstValueFrom, of } from 'rxjs';
 import { CountryListComponent } from '../../components/country-list/country-list.component';
+import { SearchInputComponent } from '../../components/search-input/search-input.component';
 import { CountryService } from '../../services/country.service';
-import { RestCountry } from '../../interfaces/rest-countries.interface';
-import { Country } from '../../interfaces/country.interface';
-import { firstValueFrom } from 'rxjs';
+import { ActivatedRoute, Router } from '@angular/router';
 
 @Component({
   selector: 'app-by-capital-page',
@@ -14,16 +14,35 @@ import { firstValueFrom } from 'rxjs';
 export class ByCapitalPageComponent {
 
   countryService = inject(CountryService);
-  query = signal('');
-  countryResource = resource({
+
+  activatedRoute = inject(ActivatedRoute);
+  router = inject(Router);
+  queryParam = this.activatedRoute.snapshot.queryParamMap.get('query') ?? '';
+  query = linkedSignal(() => this.queryParam);
+
+  // countryResource = resource({
+  //   request: () => ({ query: this.query() }),
+  //   loader: async ({ request }) => {
+  //     if (!request.query) return [];
+
+  //     return await firstValueFrom(
+  //       this.countryService.searchByCapital(request.query)
+  //     );
+  //   }
+  // });
+
+  countryResource = rxResource({
     request: () => ({ query: this.query() }),
-    loader: async ({ request }) => {
-      if (!request.query()) return [];
+    loader: ({ request }) => {
+      console.log({query: request.query })
+      if (!request.query) return of([]);
 
-      return await firstValueFrom(
-        this.countryService.searchByCapital(request.query)
-      );
-
+      this.router.navigate(['/country/by-capital'], {
+        queryParams: {
+          query: request.query
+        }
+      })
+      return this.countryService.searchByCapital(request.query)
     }
   });
   // isLoading = signal(false);
